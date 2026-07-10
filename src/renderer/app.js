@@ -99,8 +99,8 @@ async function refreshWatermarkImage() {
     $('#rmbg-note').textContent = '';
   }
   const prev = $('#wm-preview');
-  prev.innerHTML = `<img src="${state.watermark.dataUrl}" style="max-width:320px;max-height:220px;background:
-    repeating-conic-gradient(#ddd 0% 25%, #fff 0% 50%) 50%/16px 16px;border:1px solid #e2e4e8"/>`;
+  prev.innerHTML = `<img id="wm-preview-img" src="${state.watermark.dataUrl}" style="max-width:320px;max-height:220px;background:
+    repeating-conic-gradient(#ddd 0% 25%, #fff 0% 50%) 50%/16px 16px;border:1px solid #e2e4e8;opacity:${state.global.opacity}"/>`;
   renderNav();
 }
 
@@ -131,6 +131,8 @@ $('#opacity').oninput = (e) => {
   $('#op-val').textContent = String(v);
   state.global.opacity = v / 100;
   if (window.__wmBox3) window.__wmBox3.setOpacity(state.global.opacity);
+  const previewImg = $('#wm-preview-img');
+  if (previewImg) previewImg.style.opacity = String(state.global.opacity);
 };
 
 // Initialize model-availability note.
