@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { resolveEffective, fractionToPdfRect, nextAvailableName } = require('../src/main/placement');
+const { resolveEffective, fractionToPdfRect } = require('../src/main/placement');
 
 test('resolveEffective returns global when no override', () => {
   const g = { xFrac: 0.1, yFrac: 0.2, wFrac: 0.3 };
@@ -29,18 +29,4 @@ test('fractionToPdfRect handles tall image aspect', () => {
   // yFrac 0 (top) => y = 200 - 0 - 100 = 100.
   const r = fractionToPdfRect({ xFrac: 0, yFrac: 0, wFrac: 0.5 }, 100, 200, 0.5);
   assert.deepStrictEqual(r, { x: 0, y: 100, width: 50, height: 100 });
-});
-
-test('nextAvailableName returns name when free', () => {
-  assert.strictEqual(nextAvailableName(() => false, 'a.pdf'), 'a.pdf');
-});
-
-test('nextAvailableName suffixes on collision', () => {
-  const taken = new Set(['a.pdf', 'a (1).pdf']);
-  assert.strictEqual(nextAvailableName((n) => taken.has(n), 'a.pdf'), 'a (2).pdf');
-});
-
-test('nextAvailableName handles no extension', () => {
-  const taken = new Set(['file']);
-  assert.strictEqual(nextAvailableName((n) => taken.has(n), 'file'), 'file (1)');
 });

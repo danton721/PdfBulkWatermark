@@ -18,15 +18,4 @@ function fractionToPdfRect(p, pageW, pageH, imageAspect) {
   return { x, y, width, height };
 }
 
-// existsFn(name) => bool. Returns first non-colliding name, suffixing " (n)".
-function nextAvailableName(existsFn, filename) {
-  if (!existsFn(filename)) return filename;
-  const dot = filename.lastIndexOf('.');
-  const base = dot === -1 ? filename : filename.slice(0, dot);
-  const ext = dot === -1 ? '' : filename.slice(dot);
-  let n = 1;
-  while (existsFn(`${base} (${n})${ext}`)) n++;
-  return `${base} (${n})${ext}`;
-}
-
-module.exports = { resolveEffective, fractionToPdfRect, nextAvailableName };
+module.exports = { resolveEffective, fractionToPdfRect };

@@ -8,9 +8,10 @@ const state = {
   removeBg: false,
   bgCache: null,            // processed { dataUrl, aspect }
   global: { xFrac: 0.35, yFrac: 0.4, wFrac: 0.3, opacity: 1 },
+  fileDefaults: {},         // fileIndex -> {xFrac,yFrac,wFrac} (per-file default, overrides global)
+  posScope: 'all',          // 'all' | fileIndex (string) - which default Screen 3 is editing
   overrides: {},            // pageKey -> {xFrac,yFrac,wFrac} | {deleted:true}
-  pages: [],                // [{ fileIndex, pageIndex }]
-  outputDir: null
+  pages: []                 // [{ fileIndex, pageIndex }]
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -167,11 +168,51 @@ async function buildPageList() {
   }
 }
 
-// ---------- Screen 3: position on first page ----------
+// ---------- Screen 3: default position & size (all files, or a chosen one) ----------
+async function populatePosScopeOptions() {
+  const sel = document.getElementById('pos-scope');
+  const names = await Promise.all(state.files.map((f) => window.api.basename(f)));
+  sel.innerHTML = `<option value="all">All files</option>` +
+    names.map((n, i) => `<option value="${i}">${n}</option>`).join('');
+  sel.value = state.posScope;
+}
+
+function renderPosCopy() {
+  const copy = document.getElementById('pos-copy');
+  if (state.posScope === 'all') {
+    copy.textContent = "This position and size apply to every page of every file. On the next page, "
+      + "you'll be able to make adjustments on each page individually.";
+  } else {
+    const idx = Number(state.posScope);
+    window.api.basename(state.files[idx]).then((name) => {
+      copy.textContent = `This position and size apply to every page of "${name}" only, overriding the `
+        + "all-files default. On the next page, you'll be able to make adjustments on each page individually.";
+    });
+  }
+}
+
 async function enterPosition() {
+  await populatePosScopeOptions();
+  renderPosCopy();
+
+  document.getElementById('pos-scope').onchange = (e) => {
+    state.posScope = e.target.value;
+    renderPosCopy();
+    renderPositionStage();
+  };
+
+  await renderPositionStage();
+}
+
+async function renderPositionStage() {
+  const targetFileIdx = state.posScope === 'all' ? 0 : Number(state.posScope);
+  const base = state.posScope === 'all'
+    ? state.global
+    : (state.fileDefaults[targetFileIdx] ?? state.global);
+
   const host = document.getElementById('stage3');
   host.innerHTML = 'Rendering…';
-  const { canvas } = await renderPage(state.files[0], 1, 720);
+  const { canvas } = await renderPage(state.files[targetFileIdx], 1, 720);
   host.innerHTML = '';
   const stage = document.createElement('div');
   stage.className = 'page-stage';
@@ -184,8 +225,11 @@ async function enterPosition() {
     dataUrl: state.watermark.dataUrl,
     aspect: state.watermark.aspect,
     opacity: state.global.opacity,
-    placement: { xFrac: state.global.xFrac, yFrac: state.global.yFrac, wFrac: state.global.wFrac },
-    onChange: (p) => { state.global.xFrac = p.xFrac; state.global.yFrac = p.yFrac; state.global.wFrac = p.wFrac; }
+    placement: { xFrac: base.xFrac, yFrac: base.yFrac, wFrac: base.wFrac },
+    onChange: (p) => {
+      const target = state.posScope === 'all' ? state.global : (state.fileDefaults[targetFileIdx] ??= {});
+      target.xFrac = p.xFrac; target.yFrac = p.yFrac; target.wFrac = p.wFrac;
+    }
   });
 }
 
@@ -194,7 +238,9 @@ function effectiveFor(key) {
   const o = state.overrides[key];
   if (o && o.deleted) return null;
   if (o) return { xFrac: o.xFrac, yFrac: o.yFrac, wFrac: o.wFrac };
-  return { xFrac: state.global.xFrac, yFrac: state.global.yFrac, wFrac: state.global.wFrac };
+  const fileIndex = Number(key.split(':')[0]);
+  const base = state.fileDefaults[fileIndex] ?? state.global;
+  return { xFrac: base.xFrac, yFrac: base.yFrac, wFrac: base.wFrac };
 }
 
 let currentEditIdx = null;
@@ -316,9 +362,8 @@ async function selectPage(idx) {
   };
 }
 
-// ---------- Screen 5: save (one button per file, shared output folder) ----------
+// ---------- Screen 5: save (one button per file, each choosing its own location) ----------
 function enterSave() {
-  document.getElementById('out-path').textContent = state.outputDir || '';
   renderSaveList();
 }
 
@@ -341,8 +386,7 @@ function renderSaveList() {
     status.style.fontSize = '13px';
     const btn = document.createElement('button');
     btn.className = 'primary';
-    btn.textContent = 'Save';
-    btn.disabled = !state.outputDir;
+    btn.textContent = 'Save…';
     btn.onclick = () => saveOneFile(idx, file, status);
     right.append(status, btn);
 
@@ -350,15 +394,6 @@ function renderSaveList() {
     host.appendChild(row);
   });
 }
-
-document.getElementById('choose-out').onclick = async () => {
-  const dir = await window.api.selectOutputDir();
-  if (dir) {
-    state.outputDir = dir;
-    document.getElementById('out-path').textContent = dir;
-    renderSaveList();
-  }
-};
 
 // Overrides are keyed by the GLOBAL file index (position in state.files). A
 // single-file save job only contains one file at index 0, so keys must be
@@ -378,20 +413,23 @@ window.api.onProgress((p) => {
 });
 
 async function saveOneFile(idx, file, status) {
+  const outputPath = await window.api.selectSavePath(file);
+  if (!outputPath) return; // user canceled the dialog
+
   const allButtons = document.querySelectorAll('#save-list button');
   allButtons.forEach((b) => { b.disabled = true; });
   activeSaveStatusEl = status;
   status.textContent = 'saving…';
   try {
+    const fileDefault = state.fileDefaults[idx] ?? state.global;
     const job = {
-      files: [file],
+      file,
       watermark: { dataUrl: state.watermark.dataUrl, isPng: state.watermark.isPng, aspect: state.watermark.aspect },
-      global: state.global,
+      global: { xFrac: fileDefault.xFrac, yFrac: fileDefault.yFrac, wFrac: fileDefault.wFrac, opacity: state.global.opacity },
       overrides: overridesForSingleFile(idx),
-      outputDir: state.outputDir
+      outputPath
     };
-    const { results } = await window.api.generate(job);
-    const r = results[0];
+    const r = await window.api.saveOne(job);
     if (r.status === 'ok') {
       const savedName = await window.api.basename(r.output);
       status.textContent = `saved as ${savedName}`;
@@ -402,7 +440,7 @@ async function saveOneFile(idx, file, status) {
     status.textContent = 'error: ' + e.message;
   } finally {
     activeSaveStatusEl = null;
-    allButtons.forEach((b) => { b.disabled = !state.outputDir; });
+    allButtons.forEach((b) => { b.disabled = false; });
   }
 }
 

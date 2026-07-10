@@ -32,10 +32,10 @@
 
       <section data-screen="3" class="screen" hidden>
         <h2>3. Default position &amp; size</h2>
-        <p style="color:#555;margin-top:-6px">
-          This position and size apply to every page of every file. On the next page,
-          you'll be able to make adjustments on each page individually.
-        </p>
+        <label style="display:block;margin-bottom:10px">Apply to:
+          <select id="pos-scope" style="margin-left:8px"></select>
+        </label>
+        <p id="pos-copy" style="color:#555;margin-top:-6px"></p>
         <div id="stage3"></div>
       </section>
 
@@ -49,8 +49,8 @@
 
       <section data-screen="5" class="screen" hidden>
         <h2>5. Save</h2>
-        <button id="choose-out" class="primary">Choose output folder…</button>
-        <div id="out-path" style="margin-top:10px;color:#555"></div>
+        <p style="color:#555;margin-top:-6px">Each file has its own Save button — choose the location
+          and filename for each one.</p>
         <div id="save-list" style="margin-top:16px"></div>
       </section>
     </main>
