@@ -8,6 +8,7 @@
     "test": "node --test",
     "fetch-model": "node scripts/fetch-model.mjs",
     "make-splash": "node scripts/make-splash.mjs",
+    "make-icon": "node scripts/make-icon.mjs",
     "dist": "electron-builder --win portable"
   },
   "author": "",
@@ -40,7 +41,8 @@
       "assets/models/**"
     ],
     "win": {
-      "target": "portable"
+      "target": "portable",
+      "icon": "assets/icon.ico"
     },
     "portable": {
       "artifactName": "PDF-Watermark-Tool.exe",
