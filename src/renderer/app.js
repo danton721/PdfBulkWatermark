@@ -7,7 +7,7 @@ const state = {
   watermark: null,          // { path, originalDataUrl, dataUrl, isPng, aspect }
   removeBg: false,
   bgCache: null,            // processed { dataUrl, aspect }
-  global: { xFrac: 0.35, yFrac: 0.4, wFrac: 0.3, opacity: 0.5 },
+  global: { xFrac: 0.35, yFrac: 0.4, wFrac: 0.3, opacity: 1 },
   overrides: {},            // pageKey -> {xFrac,yFrac,wFrac} | {deleted:true}
   pages: [],                // [{ fileIndex, pageIndex }]
   outputDir: null
@@ -74,6 +74,12 @@ $('#add-pdfs').onclick = async () => {
 };
 
 // ---------- Screen 2: watermark ----------
+function updateRmbgButtons() {
+  const applied = state.removeBg && !!state.bgCache;
+  $('#rmbg-btn').hidden = applied;
+  $('#rmbg-undo').hidden = !applied;
+}
+
 async function refreshWatermarkImage() {
   // Determine the dataUrl/aspect actually used based on the removeBg toggle.
   if (state.removeBg) {
@@ -84,7 +90,7 @@ async function refreshWatermarkImage() {
         state.bgCache = { dataUrl: r.dataUrl, aspect: r.width / r.height };
       } catch (e) {
         $('#rmbg-note').textContent = 'failed: ' + e.message;
-        $('#rmbg').checked = false; state.removeBg = false;
+        state.removeBg = false;
       }
     }
     if (state.bgCache) {
@@ -98,6 +104,7 @@ async function refreshWatermarkImage() {
     state.watermark.isPng = true; // originalDataUrl is a PNG data URL from Jimp
     $('#rmbg-note').textContent = '';
   }
+  updateRmbgButtons();
   const prev = $('#wm-preview');
   prev.innerHTML = `<img id="wm-preview-img" src="${state.watermark.dataUrl}" style="max-width:320px;max-height:220px;background:
     repeating-conic-gradient(#ddd 0% 25%, #fff 0% 50%) 50%/16px 16px;border:1px solid #e2e4e8;opacity:${state.global.opacity}"/>`;
@@ -116,13 +123,17 @@ $('#choose-wm').onclick = async () => {
   };
   state.bgCache = null;
   state.removeBg = false;
-  $('#rmbg').checked = false;
   await refreshWatermarkImage();
 };
 
-$('#rmbg').onchange = async (e) => {
-  state.removeBg = e.target.checked;
+$('#rmbg-btn').onclick = async () => {
   if (!state.watermark) return;
+  state.removeBg = true;
+  await refreshWatermarkImage();
+};
+
+$('#rmbg-undo').onclick = async () => {
+  state.removeBg = false;
   await refreshWatermarkImage();
 };
 
@@ -139,7 +150,7 @@ $('#opacity').oninput = (e) => {
 (async () => {
   const ok = await window.api.isModelAvailable();
   if (!ok) {
-    $('#rmbg').disabled = true;
+    $('#rmbg-btn').disabled = true;
     $('#rmbg-note').textContent = '(model not installed)';
   }
 })();
@@ -178,7 +189,7 @@ async function enterPosition() {
   });
 }
 
-// ---------- Screen 4: review all pages ----------
+// ---------- Screen 4: review all pages (list left, editor right) ----------
 function effectiveFor(key) {
   const o = state.overrides[key];
   if (o && o.deleted) return null;
@@ -186,67 +197,81 @@ function effectiveFor(key) {
   return { xFrac: state.global.xFrac, yFrac: state.global.yFrac, wFrac: state.global.wFrac };
 }
 
+let currentEditIdx = null;
+const overlayUpdaters = new Map(); // pageKey -> (eff|null) => void
+
 async function enterReview() {
   await buildPageList();
-  const grid = document.getElementById('grid');
-  document.getElementById('editor').hidden = true;
-  grid.hidden = false;
-  grid.innerHTML = '';
+  overlayUpdaters.clear();
+  currentEditIdx = null;
+  const list = document.getElementById('page-list');
+  list.innerHTML = '';
   state.pages.forEach((pg, idx) => {
     const key = `${pg.fileIndex}:${pg.pageIndex}`;
-    const card = document.createElement('div');
-    card.className = 'thumb';
-    card.dataset.idx = String(idx);
-    card.innerHTML = `<div class="thumb-canvas">loading…</div>
-      <div class="thumb-label">file ${pg.fileIndex + 1}, p.${pg.pageIndex + 1}</div>`;
-    grid.appendChild(card);
-    card.onclick = () => openEditor(idx);
-    lazyRenderThumb(card, pg, key);
+    const item = document.createElement('div');
+    item.className = 'page-item';
+    item.dataset.idx = String(idx);
+    item.innerHTML = `<div class="page-item-canvas">loading…</div>
+      <div class="page-item-label">file ${pg.fileIndex + 1}, p.${pg.pageIndex + 1}</div>`;
+    list.appendChild(item);
+    item.onclick = () => selectPage(idx);
+    lazyRenderListItem(item, pg, key);
   });
+  if (state.pages.length) {
+    await selectPage(0);
+  } else {
+    document.getElementById('page-editor').innerHTML = '<p style="color:#8a8f98">No pages.</p>';
+  }
 }
 
-const thumbObserver = new IntersectionObserver((entries) => {
+const listObserver = new IntersectionObserver((entries) => {
   entries.forEach((en) => {
-    if (en.isIntersecting) { en.target.__render(); thumbObserver.unobserve(en.target); }
+    if (en.isIntersecting) { en.target.__render(); listObserver.unobserve(en.target); }
   });
 }, { rootMargin: '200px' });
 
-function lazyRenderThumb(card, pg, key) {
-  card.__render = async () => {
-    const holder = card.querySelector('.thumb-canvas');
-    const { canvas } = await renderPage(state.files[pg.fileIndex], pg.pageIndex + 1, 200);
+function lazyRenderListItem(item, pg, key) {
+  item.__render = async () => {
+    const holder = item.querySelector('.page-item-canvas');
+    const { canvas } = await renderPage(state.files[pg.fileIndex], pg.pageIndex + 1, 150);
     holder.innerHTML = '';
     const stage = document.createElement('div');
     stage.className = 'page-stage';
     stage.style.width = canvas.width + 'px';
     stage.style.height = canvas.height + 'px';
     stage.appendChild(canvas);
+    const overlayImg = document.createElement('img');
+    overlayImg.className = 'thumb-overlay';
+    overlayImg.src = state.watermark.dataUrl;
+    overlayImg.style.opacity = String(state.global.opacity);
+    stage.appendChild(overlayImg);
     holder.appendChild(stage);
-    const eff = effectiveFor(key);
-    if (eff) {
-      const img = document.createElement('img');
-      img.src = state.watermark.dataUrl;
-      img.style.position = 'absolute';
-      img.style.opacity = String(state.global.opacity);
+
+    const updater = (eff) => {
+      if (!eff) { overlayImg.style.display = 'none'; return; }
+      overlayImg.style.display = '';
       const w = eff.wFrac * canvas.width;
-      img.style.left = (eff.xFrac * canvas.width) + 'px';
-      img.style.top = (eff.yFrac * canvas.height) + 'px';
-      img.style.width = w + 'px';
-      img.style.height = (w / state.watermark.aspect) + 'px';
-      stage.appendChild(img);
-    }
+      overlayImg.style.left = (eff.xFrac * canvas.width) + 'px';
+      overlayImg.style.top = (eff.yFrac * canvas.height) + 'px';
+      overlayImg.style.width = w + 'px';
+      overlayImg.style.height = (w / state.watermark.aspect) + 'px';
+    };
+    overlayUpdaters.set(key, updater);
+    updater(effectiveFor(key));
   };
-  thumbObserver.observe(card);
+  listObserver.observe(item);
 }
 
-async function openEditor(idx) {
+async function selectPage(idx) {
+  currentEditIdx = idx;
+  document.querySelectorAll('#page-list .page-item').forEach((el) => {
+    el.classList.toggle('selected', Number(el.dataset.idx) === idx);
+  });
+
   const pg = state.pages[idx];
   const key = `${pg.fileIndex}:${pg.pageIndex}`;
-  const ed = document.getElementById('editor');
-  document.getElementById('grid').hidden = true;
-  ed.hidden = false;
+  const ed = document.getElementById('page-editor');
   ed.innerHTML = `<div style="margin-bottom:10px">
-      <button id="ed-back">← All pages</button>
       <button id="ed-delete">Delete watermark on this page</button>
       <button id="ed-reset">Reset to default</button>
       <span style="color:#8a8f98;margin-left:8px">file ${pg.fileIndex + 1}, page ${pg.pageIndex + 1}</span>
@@ -254,7 +279,8 @@ async function openEditor(idx) {
 
   const host = document.getElementById('ed-stage');
   host.textContent = 'Rendering…';
-  const { canvas } = await renderPage(state.files[pg.fileIndex], pg.pageIndex + 1, 700);
+  const { canvas } = await renderPage(state.files[pg.fileIndex], pg.pageIndex + 1, 760);
+  if (currentEditIdx !== idx) return; // user switched pages while this was loading
   host.innerHTML = '';
   const stage = document.createElement('div');
   stage.className = 'page-stage';
@@ -263,94 +289,121 @@ async function openEditor(idx) {
   stage.appendChild(canvas);
   host.appendChild(stage);
 
+  const refreshThumb = () => {
+    const u = overlayUpdaters.get(key);
+    if (u) u(effectiveFor(key));
+  };
+
   const eff = effectiveFor(key);
   let box = null;
   if (eff) {
     box = createWatermarkBox(stage, {
       dataUrl: state.watermark.dataUrl, aspect: state.watermark.aspect,
       opacity: state.global.opacity, placement: eff,
-      onChange: (p) => { state.overrides[key] = { xFrac: p.xFrac, yFrac: p.yFrac, wFrac: p.wFrac }; }
+      onChange: (p) => { state.overrides[key] = { xFrac: p.xFrac, yFrac: p.yFrac, wFrac: p.wFrac }; refreshThumb(); }
     });
   }
 
-  document.getElementById('ed-back').onclick = () => {
-    document.getElementById('grid').hidden = false;
-    ed.hidden = true;
-    enterReview();
-  };
   document.getElementById('ed-delete').onclick = () => {
     state.overrides[key] = { deleted: true };
     if (box) { box.destroy(); box = null; }
+    refreshThumb();
   };
   document.getElementById('ed-reset').onclick = () => {
     delete state.overrides[key];
-    openEditor(idx); // re-render with global placement
+    refreshThumb();
+    selectPage(idx); // re-render editor with global placement
   };
 }
 
-// ---------- Screen 5: save ----------
+// ---------- Screen 5: save (one button per file, shared output folder) ----------
 function enterSave() {
-  document.getElementById('summary').innerHTML = '';
-  document.getElementById('progress').innerHTML = '';
   document.getElementById('out-path').textContent = state.outputDir || '';
-  renderSaveNav();
+  renderSaveList();
 }
 
-function renderSaveNav() {
-  // Save button lives in the footer for step 5.
-  const disabled = state.outputDir ? '' : 'disabled';
-  document.getElementById('nav').innerHTML =
-    `<button id="back">Back</button>
-     <button id="save" class="primary" ${disabled}>Save watermarked PDFs</button>`;
-  document.getElementById('back').onclick = () => window.__nav.show(4);
-  document.getElementById('save').onclick = doSave;
+function renderSaveList() {
+  const host = document.getElementById('save-list');
+  host.innerHTML = '';
+  state.files.forEach((file, idx) => {
+    const row = document.createElement('div');
+    row.className = 'file-row';
+    const name = document.createElement('span');
+    name.textContent = file;
+    window.api.basename(file).then((b) => { name.textContent = b; });
+
+    const right = document.createElement('span');
+    right.style.display = 'flex';
+    right.style.alignItems = 'center';
+    right.style.gap = '10px';
+    const status = document.createElement('span');
+    status.style.color = '#8a8f98';
+    status.style.fontSize = '13px';
+    const btn = document.createElement('button');
+    btn.className = 'primary';
+    btn.textContent = 'Save';
+    btn.disabled = !state.outputDir;
+    btn.onclick = () => saveOneFile(idx, file, status);
+    right.append(status, btn);
+
+    row.append(name, right);
+    host.appendChild(row);
+  });
 }
 
 document.getElementById('choose-out').onclick = async () => {
   const dir = await window.api.selectOutputDir();
-  if (dir) { state.outputDir = dir; document.getElementById('out-path').textContent = dir; renderSaveNav(); }
+  if (dir) {
+    state.outputDir = dir;
+    document.getElementById('out-path').textContent = dir;
+    renderSaveList();
+  }
 };
 
+// Overrides are keyed by the GLOBAL file index (position in state.files). A
+// single-file save job only contains one file at index 0, so keys must be
+// remapped or a page's per-page override would silently fail to apply.
+function overridesForSingleFile(fileIdx) {
+  const prefix = `${fileIdx}:`;
+  const out = {};
+  for (const [key, val] of Object.entries(state.overrides)) {
+    if (key.startsWith(prefix)) out[`0:${key.slice(prefix.length)}`] = val;
+  }
+  return out;
+}
+
+let activeSaveStatusEl = null;
 window.api.onProgress((p) => {
-  document.getElementById('progress').textContent =
-    `Watermarking ${p.fileName}: page ${p.page + 1} / ${p.totalPages}`;
+  if (activeSaveStatusEl) activeSaveStatusEl.textContent = `page ${p.page + 1} / ${p.totalPages}`;
 });
 
-async function doSave() {
-  document.getElementById('save').disabled = true;
-  const job = {
-    files: state.files,
-    watermark: { dataUrl: state.watermark.dataUrl, isPng: state.watermark.isPng, aspect: state.watermark.aspect },
-    global: state.global,
-    overrides: state.overrides,
-    outputDir: state.outputDir
-  };
-  const { results } = await window.api.generate(job);
-  document.getElementById('progress').textContent = 'Done.';
-  const ok = results.filter((r) => r.status === 'ok').length;
-
-  // Build the summary with DOM nodes + textContent so file paths / error
-  // messages (attacker-influenceable via filenames) cannot inject markup.
-  const summary = document.getElementById('summary');
-  summary.innerHTML = '';
-  const heading = document.createElement('p');
-  heading.textContent = `${ok} of ${results.length} files written to ${state.outputDir}.`;
-  summary.appendChild(heading);
-  for (const r of results) {
-    const row = document.createElement('div');
-    row.className = 'file-row';
-    const name = document.createElement('span');
-    name.textContent = r.file;
-    const status = document.createElement('span');
-    status.textContent = r.status + (r.reason ? ': ' + r.reason : '');
-    row.append(name, status);
-    summary.appendChild(row);
+async function saveOneFile(idx, file, status) {
+  const allButtons = document.querySelectorAll('#save-list button');
+  allButtons.forEach((b) => { b.disabled = true; });
+  activeSaveStatusEl = status;
+  status.textContent = 'saving…';
+  try {
+    const job = {
+      files: [file],
+      watermark: { dataUrl: state.watermark.dataUrl, isPng: state.watermark.isPng, aspect: state.watermark.aspect },
+      global: state.global,
+      overrides: overridesForSingleFile(idx),
+      outputDir: state.outputDir
+    };
+    const { results } = await window.api.generate(job);
+    const r = results[0];
+    if (r.status === 'ok') {
+      const savedName = await window.api.basename(r.output);
+      status.textContent = `saved as ${savedName}`;
+    } else {
+      status.textContent = `error: ${r.reason}`;
+    }
+  } catch (e) {
+    status.textContent = 'error: ' + e.message;
+  } finally {
+    activeSaveStatusEl = null;
+    allButtons.forEach((b) => { b.disabled = !state.outputDir; });
   }
-  const openBtn = document.createElement('button');
-  openBtn.className = 'primary';
-  openBtn.textContent = 'Open output folder';
-  openBtn.onclick = () => window.api.openFolder(state.outputDir);
-  summary.appendChild(openBtn);
 }
 
 show(1);

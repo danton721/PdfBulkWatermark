@@ -20,32 +20,38 @@
         <h2>2. Choose watermark image</h2>
         <button id="choose-wm" class="primary">Choose .jpg…</button>
         <div id="wm-preview" style="margin-top:14px"></div>
-        <label style="display:flex;align-items:center;gap:8px;margin-top:14px">
-          <input type="checkbox" id="rmbg" /> Remove background (local AI)
+        <div style="display:flex;align-items:center;gap:8px;margin-top:14px">
+          <button id="rmbg-btn">Remove background (local AI)</button>
+          <button id="rmbg-undo" hidden>Undo</button>
           <span id="rmbg-note" style="color:#8a8f98;font-size:13px"></span>
-        </label>
-        <label style="display:block;margin-top:14px">Opacity: <span id="op-val">50</span>%
-          <input type="range" id="opacity" min="0" max="100" value="50" style="width:260px;vertical-align:middle" />
+        </div>
+        <label style="display:block;margin-top:14px">Opacity: <span id="op-val">100</span>%
+          <input type="range" id="opacity" min="0" max="100" value="100" style="width:260px;vertical-align:middle" />
         </label>
       </section>
 
       <section data-screen="3" class="screen" hidden>
-        <h2>3. Position &amp; size on page 1</h2>
+        <h2>3. Default position &amp; size</h2>
+        <p style="color:#555;margin-top:-6px">
+          This position and size apply to every page of every file. On the next page,
+          you'll be able to make adjustments on each page individually.
+        </p>
         <div id="stage3"></div>
       </section>
 
       <section data-screen="4" class="screen" hidden>
         <h2>4. Review all pages</h2>
-        <div id="grid" style="display:flex;flex-wrap:wrap;gap:14px"></div>
-        <div id="editor" hidden></div>
+        <div class="review-layout">
+          <div id="page-list" class="page-list"></div>
+          <div id="page-editor" class="page-editor"></div>
+        </div>
       </section>
 
       <section data-screen="5" class="screen" hidden>
         <h2>5. Save</h2>
         <button id="choose-out" class="primary">Choose output folder…</button>
         <div id="out-path" style="margin-top:10px;color:#555"></div>
-        <div id="progress" style="margin-top:14px"></div>
-        <div id="summary" style="margin-top:14px"></div>
+        <div id="save-list" style="margin-top:16px"></div>
       </section>
     </main>
     <footer id="nav"></footer>
