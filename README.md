@@ -20,10 +20,15 @@ more PDF files.
 ## Notes
 - Runs with zero network access. The AI model is bundled locally; the renderer's
   Content-Security-Policy is `connect-src 'self'`, so no remote connections are possible.
-- Background removal requires `assets/models/u2net.onnx` to be present at build time. If the
+- Background removal requires `assets/models/u2netp.onnx` to be present at build time. If the
   model file is absent, the app still works — the "Remove background" option is simply
-  disabled.
-- The portable `.exe` needs no installation; double-click to run.
+  disabled. `u2netp` (the lightweight U^2-Net variant, ~5MB) is used instead of the full
+  `u2net` (~176MB) to keep the portable exe's per-launch extraction fast, at somewhat lower
+  segmentation quality.
+- The portable `.exe` needs no installation; double-click to run. The "portable" NSIS format
+  fully re-extracts and deletes its payload on every launch (no caching), so package size
+  directly drives load time — this is why the model choice above matters.
+- `npm run make-splash` regenerates `assets/splash.bmp`, shown by NSIS while it extracts.
 
 ## Project layout
 - `src/main/` — Electron main process: window, IPC, PDF generation (pdf-lib), local AI
@@ -33,4 +38,5 @@ more PDF files.
   draggable/resizable watermark overlay.
 - `scripts/fetch-model.mjs` — one-time model download (the only code that touches the
   network, and it never runs inside the shipped app).
+- `scripts/make-splash.mjs` — generates the NSIS extraction splash image, offline.
 - `test/` — Node `node:test` unit + integration tests.
