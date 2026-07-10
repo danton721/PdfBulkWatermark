@@ -20,5 +20,25 @@
     "pdfjs-dist": "^4.4.168",
     "onnxruntime-node": "^1.19.2",
     "jimp": "0.22.12"
+  },
+  "build": {
+    "appId": "com.local.pdfwatermark",
+    "productName": "PDF Watermark Tool",
+    "directories": { "output": "dist" },
+    "files": [
+      "src/**/*",
+      "assets/models/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "**/node_modules/onnxruntime-node/**",
+      "assets/models/**"
+    ],
+    "win": {
+      "target": "portable"
+    },
+    "portable": {
+      "artifactName": "PDF-Watermark-Tool.exe"
+    }
   }
 }
