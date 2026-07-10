@@ -3,7 +3,14 @@ const path = require('path');
 const fs = require('fs');
 const Jimp = require('jimp');
 
-const MODEL_PATH = path.join(__dirname, '..', '..', 'assets', 'models', 'u2net.onnx');
+// In a packaged app the model is unpacked from the asar (see asarUnpack). Electron
+// redirects fs reads of app.asar -> app.asar.unpacked automatically, but the
+// onnxruntime-node NATIVE addon opens the file directly and bypasses that redirect,
+// so we must hand it the real on-disk (unpacked) path. In dev there is no asar and
+// this replace is a no-op.
+const MODEL_PATH = path
+  .join(__dirname, '..', '..', 'assets', 'models', 'u2net.onnx')
+  .replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`);
 const SIZE = 320;
 const MEAN = [0.485, 0.456, 0.406];
 const STD = [0.229, 0.224, 0.225];
