@@ -1,0 +1,13 @@
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; font-family: "Segoe UI", system-ui, sans-serif; color: #1c1c1e; background: #f4f5f7; }
+body { display: flex; flex-direction: column; }
+header#steps { display: flex; gap: 8px; padding: 12px 20px; background: #fff; border-bottom: 1px solid #e2e4e8; }
+header#steps .step { font-size: 13px; color: #8a8f98; padding: 4px 10px; border-radius: 14px; }
+header#steps .step.active { color: #fff; background: #2563eb; }
+header#steps .step.done { color: #2563eb; }
+main#app { flex: 1; overflow: auto; padding: 20px; }
+footer#nav { display: flex; justify-content: space-between; padding: 14px 20px; background: #fff; border-top: 1px solid #e2e4e8; }
+button { font-size: 14px; padding: 9px 18px; border-radius: 8px; border: 1px solid #cfd2d8; background: #fff; cursor: pointer; }
+button.primary { background: #2563eb; color: #fff; border-color: #2563eb; }
+button:disabled { opacity: .45; cursor: default; }
+.file-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #fff; border: 1px solid #e2e4e8; border-radius: 8px; margin-bottom: 8px; }
