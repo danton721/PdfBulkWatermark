@@ -13,11 +13,11 @@
   "license": "MIT",
   "devDependencies": {
     "electron": "^31.0.0",
-    "electron-builder": "^24.13.3"
+    "electron-builder": "^24.13.3",
+    "pdfjs-dist": "^4.4.168"
   },
   "dependencies": {
     "pdf-lib": "^1.17.1",
-    "pdfjs-dist": "^4.4.168",
     "onnxruntime-node": "^1.19.2",
     "jimp": "0.22.12"
   },
@@ -28,7 +28,11 @@
     "files": [
       "src/**/*",
       "assets/models/**/*",
-      "package.json"
+      "package.json",
+      "!node_modules/pdfjs-dist/**/*",
+      "!node_modules/onnxruntime-node/bin/napi-v6/darwin/**/*",
+      "!node_modules/onnxruntime-node/bin/napi-v6/linux/**/*",
+      "!node_modules/onnxruntime-node/bin/napi-v6/win32/arm64/**/*"
     ],
     "asarUnpack": [
       "**/node_modules/onnxruntime-node/**",
