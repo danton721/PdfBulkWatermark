@@ -25,10 +25,15 @@ more PDF files.
   disabled. `u2netp` (the lightweight U^2-Net variant, ~5MB) is used instead of the full
   `u2net` (~176MB) to keep the portable exe's per-launch extraction fast, at somewhat lower
   segmentation quality.
-- The portable `.exe` needs no installation; double-click to run. The "portable" NSIS format
-  fully re-extracts and deletes its payload on every launch (no caching), so package size
-  directly drives load time — this is why the model choice above matters.
-- `npm run make-splash` regenerates `assets/splash.bmp`, shown by NSIS while it extracts.
+- The portable `.exe` needs no installation; double-click to run. Stock NSIS portable exes
+  re-extract and delete their payload on every launch; `npm run dist` patches that template
+  (`scripts/patch-portable-nsi.mjs`) so the payload is cached in `%TEMP%\pdf-watermark-tool`
+  — the first launch extracts (showing a "Starting…" banner window), later launches skip
+  extraction and start in a few seconds. Rebuilding the exe changes the payload hash, which
+  invalidates the cache automatically; deleting the temp folder just triggers a re-extract.
+- The build uses `compression: "store"` (no compression): a much larger exe, but the first
+  launch skips LZMA decompression. Flip it back to `"maximum"` in package.json for a small
+  exe at the cost of a slower first launch only (cached launches are unaffected).
 
 ## Project layout
 - `src/main/` — Electron main process: window, IPC, PDF generation (pdf-lib), local AI
@@ -38,5 +43,6 @@ more PDF files.
   draggable/resizable watermark overlay.
 - `scripts/fetch-model.mjs` — one-time model download (the only code that touches the
   network, and it never runs inside the shipped app).
-- `scripts/make-splash.mjs` — generates the NSIS extraction splash image, offline.
+- `scripts/patch-portable-nsi.mjs` — build-time patch of electron-builder's portable NSIS
+  template (extraction cache + "Starting…" banner); reapplied automatically by `npm run dist`.
 - `test/` — Node `node:test` unit + integration tests.
