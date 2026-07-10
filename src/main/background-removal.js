@@ -9,7 +9,7 @@ const Jimp = require('jimp');
 // so we must hand it the real on-disk (unpacked) path. In dev there is no asar and
 // this replace is a no-op.
 const MODEL_PATH = path
-  .join(__dirname, '..', '..', 'assets', 'models', 'u2net.onnx')
+  .join(__dirname, '..', '..', 'assets', 'models', 'u2netp.onnx')
   .replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`);
 const SIZE = 320;
 const MEAN = [0.485, 0.456, 0.406];

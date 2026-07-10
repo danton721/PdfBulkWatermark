@@ -7,6 +7,7 @@
     "start": "electron .",
     "test": "node --test",
     "fetch-model": "node scripts/fetch-model.mjs",
+    "make-splash": "node scripts/make-splash.mjs",
     "dist": "electron-builder --win portable"
   },
   "author": "",
@@ -42,7 +43,8 @@
       "target": "portable"
     },
     "portable": {
-      "artifactName": "PDF-Watermark-Tool.exe"
+      "artifactName": "PDF-Watermark-Tool.exe",
+      "splashImage": "assets/splash.bmp"
     }
   }
 }

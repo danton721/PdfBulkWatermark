@@ -5,8 +5,11 @@ import { pipeline } from 'node:stream/promises';
 import { Readable } from 'node:stream';
 import path from 'node:path';
 
-const URL = 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2net.onnx';
-const out = path.join(process.cwd(), 'assets', 'models', 'u2net.onnx');
+// u2netp is the lightweight U^2-Net variant (~5MB vs ~176MB for u2net) - same
+// architecture family, input size, and preprocessing, at lower segmentation
+// quality. Chosen to keep the portable exe's per-launch extraction fast.
+const URL = 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2netp.onnx';
+const out = path.join(process.cwd(), 'assets', 'models', 'u2netp.onnx');
 
 if (existsSync(out)) { console.log('Model already present:', out); process.exit(0); }
 mkdirSync(path.dirname(out), { recursive: true });
