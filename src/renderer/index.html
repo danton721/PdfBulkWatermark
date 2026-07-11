@@ -1,0 +1,60 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self'; img-src 'self' data: blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'" />
+    <link rel="stylesheet" href="styles.css" />
+    <title>PDF Watermark Tool</title>
+  </head>
+  <body>
+    <header id="steps"></header>
+    <main id="app">
+      <section data-screen="1" class="screen">
+        <h2>1. Select PDF files</h2>
+        <button id="add-pdfs" class="primary">Add PDFs…</button>
+        <div id="pdf-list" style="margin-top:14px"></div>
+      </section>
+
+      <section data-screen="2" class="screen" hidden>
+        <h2>2. Choose watermark image</h2>
+        <button id="choose-wm" class="primary">Choose .jpg…</button>
+        <div id="wm-preview" style="margin-top:14px"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:14px">
+          <button id="rmbg-btn">Remove background (local AI)</button>
+          <button id="rmbg-undo" hidden>Undo</button>
+          <span id="rmbg-note" style="color:#8a8f98;font-size:13px"></span>
+        </div>
+        <label style="display:block;margin-top:14px">Opacity: <span id="op-val">100</span>%
+          <input type="range" id="opacity" min="0" max="100" value="100" style="width:260px;vertical-align:middle" />
+        </label>
+      </section>
+
+      <section data-screen="3" class="screen" hidden>
+        <h2>3. Default position &amp; size</h2>
+        <label style="display:block;margin-bottom:10px">Apply to:
+          <select id="pos-scope" style="margin-left:8px"></select>
+        </label>
+        <p id="pos-copy" style="color:#555;margin-top:-6px"></p>
+        <div id="stage3"></div>
+      </section>
+
+      <section data-screen="4" class="screen" hidden>
+        <h2>4. Review all pages</h2>
+        <div class="review-layout">
+          <div id="page-list" class="page-list"></div>
+          <div id="page-editor" class="page-editor"></div>
+        </div>
+      </section>
+
+      <section data-screen="5" class="screen" hidden>
+        <h2>5. Save</h2>
+        <p style="color:#555;margin-top:-6px">Each file has its own Save button — choose the location
+          and filename for each one.</p>
+        <div id="save-list" style="margin-top:16px"></div>
+      </section>
+    </main>
+    <footer id="nav"></footer>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

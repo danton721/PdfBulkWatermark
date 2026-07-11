@@ -1,0 +1,52 @@
+{
+  "name": "pdf-watermark-tool",
+  "version": "1.0.0",
+  "description": "Add a .jpg watermark to every page of PDF files, fully offline.",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test",
+    "fetch-model": "node scripts/fetch-model.mjs",
+    "make-icon": "node scripts/make-icon.mjs",
+    "dist": "node scripts/patch-portable-nsi.mjs && electron-builder --win portable"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3",
+    "pdfjs-dist": "^4.4.168"
+  },
+  "dependencies": {
+    "pdf-lib": "^1.17.1",
+    "onnxruntime-node": "^1.19.2",
+    "jimp": "0.22.12"
+  },
+  "build": {
+    "appId": "com.local.pdfwatermark",
+    "productName": "PDF Watermark Tool",
+    "compression": "store",
+    "directories": { "output": "dist" },
+    "files": [
+      "src/**/*",
+      "assets/models/**/*",
+      "package.json",
+      "!node_modules/pdfjs-dist/**/*",
+      "!node_modules/onnxruntime-node/bin/napi-v6/darwin/**/*",
+      "!node_modules/onnxruntime-node/bin/napi-v6/linux/**/*",
+      "!node_modules/onnxruntime-node/bin/napi-v6/win32/arm64/**/*"
+    ],
+    "asarUnpack": [
+      "**/node_modules/onnxruntime-node/**",
+      "assets/models/**"
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "assets/icon.ico"
+    },
+    "portable": {
+      "artifactName": "PDF-Watermark-Tool.exe",
+      "unpackDirName": "pdf-watermark-tool"
+    }
+  }
+}
