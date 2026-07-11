@@ -24,7 +24,7 @@
   },
   "build": {
     "appId": "com.local.pdfwatermark",
-    "productName": "PDF Watermark Tool",
+    "productName": "PDF Stamp",
     "compression": "store",
     "directories": { "output": "dist" },
     "files": [
@@ -47,6 +47,13 @@
     "portable": {
       "artifactName": "PDF-Watermark-Tool.exe",
       "unpackDirName": "pdf-watermark-tool"
+    },
+    "appx": {
+      "applicationId": "PDFStamp",
+      "identityName": "IP2APP.PDFStamp",
+      "publisher": "CN=3E38E954-77C1-4A00-B74C-07A000AFDC7B",
+      "publisherDisplayName": "IP2APP",
+      "displayName": "PDF Stamp"
     }
   }
 }
