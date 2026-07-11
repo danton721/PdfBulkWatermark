@@ -48,6 +48,10 @@ jobs:
         if: matrix.platform == 'win'
         run: npx electron-builder --win portable --publish never
 
+      - name: Build (Windows APPX for Microsoft Store)
+        if: matrix.platform == 'win'
+        run: npx electron-builder --win appx --publish never
+
       - name: Build (macOS)
         if: matrix.platform == 'mac'
         env:
@@ -62,6 +66,14 @@ jobs:
             dist/*.exe
             dist/*.dmg
             dist/*.zip
+          if-no-files-found: error
+
+      - name: Upload APPX artifact
+        if: matrix.platform == 'win'
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-win-appx
+          path: dist/*.appx
           if-no-files-found: error
 
   release:
@@ -87,5 +99,40 @@ jobs:
         with:
           tag_name: v${{ steps.pkg.outputs.version }}-${{ github.run_number }}
           name: v${{ steps.pkg.outputs.version }} (build ${{ github.run_number }})
+          body: |
+            Also available on the [Microsoft Store](https://apps.microsoft.com/detail/9N6DXQQZP719).
           files: artifacts/**/*
           generate_release_notes: true
+
+  publish-store:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download APPX artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build-win-appx
+          path: appx
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Install Microsoft Store Developer CLI
+        run: |
+          curl -sL https://github.com/microsoft/msstore-cli/releases/latest/download/MSStoreCLI-linux-x64.tar.gz -o msstore-cli.tar.gz
+          mkdir -p msstore-cli
+          tar -xvf msstore-cli.tar.gz -C ./msstore-cli
+          sudo cp -R msstore-cli/. /usr/local/bin
+
+      - name: Configure Microsoft Store Developer CLI
+        run: >
+          msstore reconfigure
+          --tenantId "${{ secrets.MSSTORE_TENANT_ID }}"
+          --sellerId "${{ secrets.MSSTORE_SELLER_ID }}"
+          --clientId "${{ secrets.MSSTORE_CLIENT_ID }}"
+          --clientSecret "${{ secrets.MSSTORE_CLIENT_SECRET }}"
+
+      - name: Publish to Microsoft Store
+        run: msstore publish appx -i "$(ls appx/*.appx)" -id 9N6DXQQZP719
