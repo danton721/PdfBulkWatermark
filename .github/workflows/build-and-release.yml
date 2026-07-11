@@ -119,10 +119,10 @@ jobs:
         with:
           dotnet-version: "9.0.x"
 
-      - name: Install libsecret
+      - name: Install libsecret and keyring
         run: |
           sudo apt-get update
-          sudo apt-get install -y libsecret-1-0
+          sudo apt-get install -y libsecret-1-0 gnome-keyring dbus
 
       - name: Install Microsoft Store Developer CLI
         run: |
@@ -131,13 +131,24 @@ jobs:
           tar -xvf msstore-cli.tar.gz -C ./msstore-cli
           sudo cp -R msstore-cli/. /usr/local/bin
 
-      - name: Configure Microsoft Store Developer CLI
-        run: >
-          msstore reconfigure
-          --tenantId "${{ vars.MSSTORE_TENANT_ID }}"
-          --sellerId "${{ vars.MSSTORE_SELLER_ID }}"
-          --clientId "${{ vars.MSSTORE_CLIENT_ID }}"
-          --clientSecret "${{ secrets.MSSTORE_CLIENT_SECRET }}"
-
-      - name: Publish to Microsoft Store
-        run: msstore publish appx -i "$(ls appx/*.appx)" -id 9N6DXQQZP719
+      # msstore stores credentials via the Secret Service API, which needs a
+      # D-Bus session with an unlocked gnome-keyring. That session only lives
+      # for the duration of dbus-run-session, so configure and publish must
+      # run inside the same one.
+      - name: Configure and publish to Microsoft Store
+        env:
+          MSSTORE_TENANT_ID: ${{ vars.MSSTORE_TENANT_ID }}
+          MSSTORE_SELLER_ID: ${{ vars.MSSTORE_SELLER_ID }}
+          MSSTORE_CLIENT_ID: ${{ vars.MSSTORE_CLIENT_ID }}
+          MSSTORE_CLIENT_SECRET: ${{ secrets.MSSTORE_CLIENT_SECRET }}
+        run: |
+          dbus-run-session -- bash -c '
+            set -e
+            echo "keyring" | gnome-keyring-daemon --unlock
+            msstore reconfigure \
+              --tenantId "$MSSTORE_TENANT_ID" \
+              --sellerId "$MSSTORE_SELLER_ID" \
+              --clientId "$MSSTORE_CLIENT_ID" \
+              --clientSecret "$MSSTORE_CLIENT_SECRET"
+            msstore publish appx -i "$(ls appx/*.appx)" -id 9N6DXQQZP719
+          '
