@@ -129,9 +129,9 @@ jobs:
       - name: Configure Microsoft Store Developer CLI
         run: >
           msstore reconfigure
-          --tenantId "${{ secrets.MSSTORE_TENANT_ID }}"
-          --sellerId "${{ secrets.MSSTORE_SELLER_ID }}"
-          --clientId "${{ secrets.MSSTORE_CLIENT_ID }}"
+          --tenantId "${{ vars.MSSTORE_TENANT_ID }}"
+          --sellerId "${{ vars.MSSTORE_SELLER_ID }}"
+          --clientId "${{ vars.MSSTORE_CLIENT_ID }}"
           --clientSecret "${{ secrets.MSSTORE_CLIENT_SECRET }}"
 
       - name: Publish to Microsoft Store
