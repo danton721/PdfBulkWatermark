@@ -1,0 +1,88 @@
+name: Build and Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+jobs:
+  build:
+    if: github.event.pull_request.merged == true
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win
+          - os: macos-latest
+            platform: mac
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Cache background-removal model
+        uses: actions/cache@v4
+        with:
+          path: assets/models
+          key: bg-removal-model-v1
+
+      - name: Fetch background-removal model (if not cached)
+        run: npm run fetch-model
+        continue-on-error: true
+
+      - name: Build (Windows portable)
+        if: matrix.platform == 'win'
+        run: npx electron-builder --win portable --publish never
+
+      - name: Build (macOS)
+        if: matrix.platform == 'mac'
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        run: npx electron-builder --mac --publish never
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.platform }}
+          path: |
+            dist/*.exe
+            dist/*.dmg
+            dist/*.zip
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Read version
+        id: pkg
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.pkg.outputs.version }}-${{ github.run_number }}
+          name: v${{ steps.pkg.outputs.version }} (build ${{ github.run_number }})
+          files: artifacts/**/*
+          generate_release_notes: true
