@@ -119,6 +119,11 @@ jobs:
         with:
           dotnet-version: "9.0.x"
 
+      - name: Install libsecret
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsecret-1-0
+
       - name: Install Microsoft Store Developer CLI
         run: |
           curl -sL https://github.com/microsoft/msstore-cli/releases/latest/download/MSStoreCLI-linux-x64.tar.gz -o msstore-cli.tar.gz
