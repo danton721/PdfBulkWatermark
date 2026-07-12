@@ -150,5 +150,11 @@ jobs:
               --sellerId "$MSSTORE_SELLER_ID" \
               --clientId "$MSSTORE_CLIENT_ID" \
               --clientSecret "$MSSTORE_CLIENT_SECRET"
-            msstore publish appx -i appx -id 9N6DXQQZP719
+            # msstore only recognizes a prebuilt package when pointed directly
+            # at a .msix/.msixbundle/.msixupload file; .appx is the same format
+            # under its former name, so rename it.
+            package="$(ls appx/*.appx)"
+            msix="${package%.appx}.msix"
+            mv "$package" "$msix"
+            msstore publish "$msix" -id 9N6DXQQZP719
           '
