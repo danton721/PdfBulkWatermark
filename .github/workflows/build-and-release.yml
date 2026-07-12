@@ -159,5 +159,15 @@ jobs:
             # Verbose: the CLI swallows API errors into a generic "make sure
             # you have the correct AppId" message; -v logs the real HTTP
             # status from the Partner Center API.
-            msstore publish "$msix" -id 9N6DXQQZP719 -v
+            # The Partner Center gateway intermittently answers 504 after
+            # ~80s, so retry with a delay between attempts.
+            for attempt in 1 2 3 4 5; do
+              if msstore publish "$msix" -id 9N6DXQQZP719 -v; then
+                exit 0
+              fi
+              echo "msstore publish attempt $attempt failed; retrying in 60s..."
+              sleep 60
+            done
+            echo "msstore publish failed after 5 attempts"
+            exit 1
           '
