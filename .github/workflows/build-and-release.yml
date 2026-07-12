@@ -156,5 +156,8 @@ jobs:
             package="$(ls appx/*.appx)"
             msix="${package%.appx}.msix"
             mv "$package" "$msix"
-            msstore publish "$msix" -id 9N6DXQQZP719
+            # Verbose: the CLI swallows API errors into a generic "make sure
+            # you have the correct AppId" message; -v logs the real HTTP
+            # status from the Partner Center API.
+            msstore publish "$msix" -id 9N6DXQQZP719 -v
           '
