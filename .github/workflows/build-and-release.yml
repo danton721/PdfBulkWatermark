@@ -150,5 +150,5 @@ jobs:
               --sellerId "$MSSTORE_SELLER_ID" \
               --clientId "$MSSTORE_CLIENT_ID" \
               --clientSecret "$MSSTORE_CLIENT_SECRET"
-            msstore publish appx -i "$(ls appx/*.appx)" -id 9N6DXQQZP719
+            msstore publish appx -i appx -id 9N6DXQQZP719
           '
