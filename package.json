@@ -9,6 +9,7 @@
     "fetch-model": "node scripts/fetch-model.mjs",
     "make-icon": "node scripts/make-icon.mjs",
     "make-appx-assets": "node scripts/make-appx-assets.mjs",
+    "build-brand-assets": "node scripts/build-brand-assets.mjs",
     "dist": "node scripts/patch-portable-nsi.mjs && electron-builder --win portable"
   },
   "author": "",
